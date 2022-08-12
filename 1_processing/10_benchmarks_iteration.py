@@ -29,6 +29,8 @@ from datetime import date
 def parse_args():
     parser=argparse.ArgumentParser(description="A script to calculate cindex for endpoints")
     parser.add_argument('--iteration', type=int, required=True)
+    parser.add_argument('--partition', type=int, required=True)
+    parser.add_argument('--model', type=str, required=True)
     args=parser.parse_args()
     return args
 
@@ -62,8 +64,8 @@ def load_data():
     out_path = f"{experiment_path}/benchmarks"
     pathlib.Path(out_path).mkdir(parents=True, exist_ok=True)
 
-    #prediction_paths = pd.read_feather(f"{experiment_path}/prediction_paths.feather")
-    prediction_paths = os.listdir(in_path) # TODO: check!
+    prediction_paths = pd.read_feather(f"{experiment_path}/prediction_paths.feather")
+    #prediction_paths = os.listdir(in_path) 
 
     #endpoints_md = pd.read_csv(f"{experiment_path}/endpoints.csv")
     #endpoints = sorted(endpoints_md.endpoint.to_list())
@@ -83,14 +85,13 @@ def load_data():
     
     today = str(date.today())
     #today = '2022-07-01'
-    eligable_eids = pd.read_feather(f"{output_path}/eligable_eids_{today}.feather")
+    eligable_eids = pd.read_feather(f"{output_path}/eligable_eids_2022-07-01.feather")
     eids_dict = eligable_eids.set_index("endpoint")["eid_list"].to_dict()
 
     return output_path, experiment_path, in_path, out_path, endpoints, scores, prediction_paths, eids_dict
 
-def read_partitions(in_path, prediction_paths, endpoint, score, time):
-    # paths = prediction_paths.query("endpoint==@endpoint").query("score==@score").path.to_list()
-    paths = [p for p in prediction_paths if endpoint in p and score in p]
+def read_single_partition_single_model(in_path, prediction_paths, endpoint, score, partition, model, time):
+    paths = prediction_paths.query("endpoint==@endpoint").query("score==@score").query("partition==@partition").query("model==@model").path.to_list()
     data_preds = pd.DataFrame({})
     for path in paths:
         data_preds = pd.concat([data_preds, pd.read_feather(f"{in_path}/{path}", columns=["eid", f"Ft_{time}"])])
@@ -98,9 +99,34 @@ def read_partitions(in_path, prediction_paths, endpoint, score, time):
     data_preds.columns = ["Ft"]
     return data_preds
 
-def prepare_data(in_path, prediction_paths, endpoint, score, t_eval, output_path):
-    temp_preds = read_partitions(in_path, prediction_paths, endpoint, score, t_eval)
-    temp_tte = pd.read_feather(f"{output_path}/baseline_outcomes_220531.feather", 
+def read_partitions_single_model(in_path, prediction_paths, endpoint, score, model, time):
+    paths = prediction_paths.query("endpoint==@endpoint").query("score==@score").query("model==@model").path.to_list()
+    data_preds = pd.DataFrame({})
+    for path in paths:
+        data_preds = pd.concat([data_preds, pd.read_feather(f"{in_path}/{path}", columns=["eid", f"Ft_{time}"])])
+    data_preds = data_preds.set_index("eid").sort_index()
+    data_preds.columns = ["Ft"]
+    return data_preds
+
+def read_partitions(in_path, prediction_paths, endpoint, score, time):
+    paths = prediction_paths.query("endpoint==@endpoint").query("score==@score").path.to_list()
+    #paths = [p for p in prediction_paths if endpoint in p and score in p]
+    data_preds = pd.DataFrame({})
+    for path in paths:
+        data_preds = pd.concat([data_preds, pd.read_feather(f"{in_path}/{path}", columns=["eid", f"Ft_{time}"])])
+    data_preds = data_preds.set_index("eid").sort_index()
+    data_preds.columns = ["Ft"]
+    return data_preds
+
+def prepare_data(in_path, prediction_paths, endpoint, score, partition, model, t_eval, output_path):
+    # benchmark all models and all partitions
+    #temp_preds = read_partitions(in_path, prediction_paths, endpoint, score, t_eval)
+    # benchmark per model and per partition
+    #temp_preds = read_single_partition_single_model(in_path, prediction_paths, endpoint, score, partition, model, t_eval)
+    # benchmark all partitions per model
+    temp_preds = read_partitions_single_model(in_path, prediction_paths, endpoint, score, model, t_eval)
+    
+    temp_tte = pd.read_feather(f"{output_path}/baseline_outcomes_220627.feather", 
         columns= ["eid", f"{endpoint}_event", f"{endpoint}_time"]).set_index("eid")
     temp_tte.columns = ["event", "time"]
     temp_data = temp_preds.merge(temp_tte, left_index=True, right_index=True, how="left")
@@ -115,8 +141,8 @@ def prepare_data(in_path, prediction_paths, endpoint, score, t_eval, output_path
 
 from lifelines.utils import concordance_index
 
-def calculate_cindex(in_path, prediction_paths, endpoint, score, time, iteration, eids_i, output_path):  
-    temp_data = prepare_data(in_path, prediction_paths, endpoint, score, time, output_path)
+def calculate_cindex(in_path, prediction_paths, endpoint, score, partition, model, time, iteration, eids_i, output_path):  
+    temp_data = prepare_data(in_path, prediction_paths, endpoint, score, partition, model, time, output_path)
     temp_data = temp_data[temp_data.index.isin(eids_i)]
     
     del eids_i
@@ -128,13 +154,18 @@ def calculate_cindex(in_path, prediction_paths, endpoint, score, time, iteration
     
     del temp_data
     
-    return {"endpoint":endpoint, "score": score, "iteration": iteration, "time":time, "cindex":cindex}
+    # benchmark all models and all partitions
+    #return {"endpoint":endpoint, "score": score, "iteration": iteration, "time":time, "cindex":cindex}
+    # benchmark per model and per partition
+    #return {"endpoint":endpoint, "score": score, "partition": partition, "model": model, "iteration": iteration, "time":time, "cindex":cindex}
+    # benchmark all partitions per model
+    return {"endpoint":endpoint, "score": score, "model": model, "iteration": iteration, "time":time, "cindex":cindex}
 
 @ray.remote
-def calculate_iteration(in_path, prediction_paths, endpoint, scores, time, iteration, eids_i, output_path):  
+def calculate_iteration(in_path, prediction_paths, endpoint, scores, partition, model, time, iteration, eids_i, output_path):  
     dicts = []
     for score in scores:
-        dicts.append(calculate_cindex(in_path, prediction_paths, endpoint, score, time, iteration, eids_i, output_path))
+        dicts.append(calculate_cindex(in_path, prediction_paths, endpoint, score, partition, model, time, iteration, eids_i, output_path))
     return dicts
  
 def main(args):
@@ -148,30 +179,30 @@ def main(args):
 
     # read iteration and set seed
     iteration=args.iteration
+    partition=args.partition
+    model=args.model
     np.random.seed(iteration)
 
     # prepare setup
-    #today = str(date.today())
-    today = '2022-07-01'
+    today = str(date.today())
+    #today = '2022-07-01'
     t_eval = 10
-    name = f"benchmark_cindex_{today}_{iteration}"
+    
+    # benchmark all models and all partitions
+    #name = f"benchmark_cindex_{today}_iteration_{iteration}"
+    # benchmark per model and per partition
+    #name = f"benchmark_cindex_{today}_partition_{partition}_model_{model}_iteration_{iteration}"
+    # benchmark all partitions per model
+    name = f"benchmark_cindex_{today}_model_{model}_iteration_{iteration}"
 
     # load data
     output_path, experiment_path, in_path, out_path, endpoints, scores, prediction_paths, eids_dict = load_data()
 
     rows_ray = []
-    #batch_size = 100
-    #def batch(iterable, n=1):
-    #    l = len(iterable)
-    #    for ndx in range(0, l, n):
-    #        yield iterable[ndx:min(ndx + n, l)]
-    #for endpoint_subset in batch(endpoints, batch_size):   
-        #for endpoint in tqdm(endpoint_subset): 
     for endpoint in tqdm(endpoints): 
         eids_e = eids_dict[endpoint]
         eids_i = np.random.choice(eids_e, size=len(eids_e))
-        ds = calculate_iteration.remote(in_path, prediction_paths, endpoint, scores, t_eval, iteration, eids_i, output_path) #ray
-        #ds = calculate_iteration(in_path, prediction_paths, endpoint, scores, t_eval, iteration, eids_i, output_path) # not ray
+        ds = calculate_iteration.remote(in_path, prediction_paths, endpoint, scores, partition, model, t_eval, iteration, eids_i, output_path) #ray
         rows_ray.append(ds)
 
         del eids_e
@@ -183,7 +214,9 @@ def main(args):
     
     #print('benchmark endpoints feather len:', len(benchmark_endpoints), flush=True)
     
-    benchmark_endpoints.to_feather(f"{experiment_path}/benchmarks/{name}.feather")
+    pathlib.Path(f"{experiment_path}/benchmarks/{today}").mkdir(parents=True, exist_ok=True)
+    
+    benchmark_endpoints.to_feather(f"{experiment_path}/benchmarks/{today}/{name}.feather")
     
     ray.shutdown()
 

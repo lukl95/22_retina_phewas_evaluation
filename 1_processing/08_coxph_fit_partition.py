@@ -35,14 +35,14 @@ def get_score_defs():
 def get_features(endpoint, score_defs, models):
     features = {
         model: {
-            #"Age+Sex": score_defs["AgeSex"],
-            #"Retina": [endpoint],
-            #"SCORE2": score_defs["SCORE2"],
-            #"ASCVD": score_defs["ASCVD"],
+            "Age+Sex": score_defs["AgeSex"],
+            "Retina": [endpoint],
+            "SCORE2": score_defs["SCORE2"],
+            "ASCVD": score_defs["ASCVD"],
             "QRISK3": score_defs["QRISK3"],
-            #"Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
-            #"SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
-            #"ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
+            "Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
+            "SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
+            "ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
             "QRISK3+Retina": score_defs["QRISK3"] + [endpoint],
             }
     for model in models}
