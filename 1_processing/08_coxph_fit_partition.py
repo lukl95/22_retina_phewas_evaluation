@@ -27,7 +27,8 @@ from datetime import date
 
 def get_score_defs():
 
-    with open(r'/sc-projects/sc-proj-ukb-cvd/results/projects/22_retina_phewas_220603_fullrun/data/score_definitions.yaml') as file:
+    #with open(r'/sc-projects/sc-proj-ukb-cvd/results/projects/22_retina_phewas_220603_fullrun/data/score_definitions.yaml') as file:
+    with open(r'/sc-projects/sc-proj-ukb-cvd/results/projects/22_retina_phewas/data/score_definitions.yaml') as file:
         score_defs = yaml.full_load(file)
     
     return score_defs
@@ -35,15 +36,15 @@ def get_score_defs():
 def get_features(endpoint, score_defs, models):
     features = {
         model: {
-            "Age+Sex": score_defs["AgeSex"],
-            "Retina": [endpoint],
+#             "Age+Sex": score_defs["AgeSex"],
+#             "Retina": [endpoint],
             "SCORE2": score_defs["SCORE2"],
             "ASCVD": score_defs["ASCVD"],
             "QRISK3": score_defs["QRISK3"],
-            "Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
-            "SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
-            "ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
-            "QRISK3+Retina": score_defs["QRISK3"] + [endpoint],
+#             "Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
+           "SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
+           "ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
+           "QRISK3+Retina": score_defs["QRISK3"] + [endpoint],
             }
     for model in models}
     return features
@@ -133,14 +134,23 @@ def load_data(partition):
     base_path = "/sc-projects/sc-proj-ukb-cvd"
     print(base_path)
 
-    project_label = "22_retina_phewas_220603_fullrun"
+    ### EDIT HERE  ###
+    project_label = "22_retina_phewas"
     project_path = f"{base_path}/results/projects/{project_label}"
     figure_path = f"{project_path}/figures"
     output_path = f"{project_path}/data"
 
-    experiment = '220603_fullrun'
+    pathlib.Path(figure_path).mkdir(parents=True, exist_ok=True)
+    pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
+
+    experiment = '220812_test'
     experiment_path = f"{output_path}/{experiment}"
     pathlib.Path(experiment_path).mkdir(parents=True, exist_ok=True)
+    
+    today = '220824'
+    # today = None
+    
+    #### ^^^^ ####
     
     in_path = pathlib.Path(f"{experiment_path}/coxph/input")
     in_path.mkdir(parents=True, exist_ok=True)
@@ -148,7 +158,7 @@ def load_data(partition):
     model_path = f"{experiment_path}/coxph/models"
     pathlib.Path(model_path).mkdir(parents=True, exist_ok=True)
 
-    data_outcomes = pd.read_feather(f"{output_path}/baseline_outcomes_220531.feather").set_index("eid")
+    data_outcomes = pd.read_feather(f"{output_path}/baseline_outcomes_220627.feather").set_index("eid")
     
     #endpoints_md = pd.read_csv(f"{experiment_path}/endpoints.csv")
     #endpoints = sorted(endpoints_md.endpoint.to_list())
@@ -161,14 +171,13 @@ def load_data(partition):
     
     endpoint_defs = pd.read_feather(f"{output_path}/phecode_defs_220306.feather").query("endpoint==@endpoints").sort_values("endpoint").set_index("endpoint")
     
-    today = str(date.today())
-    #today = '2022-06-23'
+    today = str(date.today()) if today is None else today
     eligable_eids = pd.read_feather(f"{output_path}/eligable_eids_{today}.feather")
     eids_dict = eligable_eids.set_index("endpoint")["eid_list"].to_dict()
 
-    models = ['ImageTraining_[]_ConvNeXt_MLPHead_predictions_cropratio0.3', 
-              'ImageTraining_[]_ConvNeXt_MLPHead_predictions_cropratio0.5', 
-              'ImageTraining_[]_ConvNeXt_MLPHead_predictions_cropratio0.8'
+    models = ['ImageTraining_[]_ConvNeXt_MLPHead_predictions_cropratio0.66', 
+              #'ImageTraining_[]_ConvNeXt_MLPHead_predictions_cropratio0.5', 
+              #'ImageTraining_[]_ConvNeXt_MLPHead_predictions_cropratio0.8'
              ]
     
     #mapping = {"sex_f31_0_0": {"Female":0, "Male":1}}

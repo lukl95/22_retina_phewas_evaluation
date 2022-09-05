@@ -51,12 +51,12 @@ def load_data():
     base_path = "/sc-projects/sc-proj-ukb-cvd"
     print(base_path)
 
-    project_label = "22_retina_phewas_220603_fullrun"
+    project_label = "22_retina_phewas"
     project_path = f"{base_path}/results/projects/{project_label}"
     figure_path = f"{project_path}/figures"
     output_path = f"{project_path}/data"
 
-    experiment = '220603_fullrun'
+    experiment = '220812_test'
     experiment_path = f"{output_path}/{experiment}"
     pathlib.Path(experiment_path).mkdir(parents=True, exist_ok=True)
     
@@ -78,14 +78,14 @@ def load_data():
     
     scores = [
         'Age+Sex', 'Retina', 'Age+Sex+Retina',
-        "SCORE2", "SCORE2+Retina", 
-        "ASCVD", "ASCVD+Retina", 
-        "QRISK3", "QRISK3+Retina"
+#         "SCORE2", "SCORE2+Retina", 
+#         "ASCVD", "ASCVD+Retina", 
+#         "QRISK3", "QRISK3+Retina"
     ]
     
     today = str(date.today())
     #today = '2022-07-01'
-    eligable_eids = pd.read_feather(f"{output_path}/eligable_eids_2022-07-01.feather")
+    eligable_eids = pd.read_feather(f"{output_path}/eligable_eids_220824.feather")
     eids_dict = eligable_eids.set_index("endpoint")["eid_list"].to_dict()
 
     return output_path, experiment_path, in_path, out_path, endpoints, scores, prediction_paths, eids_dict
@@ -184,8 +184,8 @@ def main(args):
     np.random.seed(iteration)
 
     # prepare setup
-    today = str(date.today())
-    #today = '2022-07-01'
+#     today = str(date.today())
+    today = '220824'
     t_eval = 10
     
     # benchmark all models and all partitions
