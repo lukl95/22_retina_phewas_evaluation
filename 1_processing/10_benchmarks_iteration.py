@@ -78,9 +78,9 @@ def load_data():
     
     scores = [
         'Age+Sex', 'Retina', 'Age+Sex+Retina',
-#         "SCORE2", "SCORE2+Retina", 
-#         "ASCVD", "ASCVD+Retina", 
-#         "QRISK3", "QRISK3+Retina"
+        "SCORE2", "SCORE2+Retina", 
+        "ASCVD", "ASCVD+Retina", 
+        "QRISK3", "QRISK3+Retina"
     ]
     
     today = str(date.today())
@@ -102,8 +102,10 @@ def read_single_partition_single_model(in_path, prediction_paths, endpoint, scor
 def read_partitions_single_model(in_path, prediction_paths, endpoint, score, model, time):
     paths = prediction_paths.query("endpoint==@endpoint").query("score==@score").query("model==@model").path.to_list()
     data_preds = pd.DataFrame({})
+    #print('Calculating for: ', endpoint, score, model)
     for path in paths:
         data_preds = pd.concat([data_preds, pd.read_feather(f"{in_path}/{path}", columns=["eid", f"Ft_{time}"])])
+    #print(data_preds.head())
     data_preds = data_preds.set_index("eid").sort_index()
     data_preds.columns = ["Ft"]
     return data_preds
@@ -162,10 +164,27 @@ def calculate_cindex(in_path, prediction_paths, endpoint, score, partition, mode
     return {"endpoint":endpoint, "score": score, "model": model, "iteration": iteration, "time":time, "cindex":cindex}
 
 @ray.remote
-def calculate_iteration(in_path, prediction_paths, endpoint, scores, partition, model, time, iteration, eids_i, output_path):  
+def calculate_iteration(in_path, prediction_paths, endpoint, scores, partition, model, time, iteration, eids_e, output_path):  
+
     dicts = []
-    for score in scores:
-        dicts.append(calculate_cindex(in_path, prediction_paths, endpoint, score, partition, model, time, iteration, eids_i, output_path))
+    valid = False
+    grace = 100
+    i = 0
+    while valid==False:
+        i+=1
+        eids_i = np.random.choice(eids_e, size=len(eids_e)) if iteration != 0 else eids_e
+
+        for score in scores:
+            score_dict = calculate_cindex(in_path, prediction_paths, endpoint, score, partition, model, time, iteration, eids_i, output_path)
+            if not np.isnan(score_dict['cindex']) or i>=grace:
+                dicts.append(score_dict)
+            else:
+                valid = False
+                dicts = []
+                break
+
+        if len(dicts) == len(scores) or i>=grace:
+            valid=True
     return dicts
  
 def main(args):
@@ -185,7 +204,7 @@ def main(args):
 
     # prepare setup
 #     today = str(date.today())
-    today = '220824'
+    today = '221103'
     t_eval = 10
     
     # benchmark all models and all partitions
@@ -199,10 +218,10 @@ def main(args):
     output_path, experiment_path, in_path, out_path, endpoints, scores, prediction_paths, eids_dict = load_data()
 
     rows_ray = []
-    for endpoint in tqdm(endpoints): 
+    for endpoint in endpoints: 
         eids_e = eids_dict[endpoint]
-        eids_i = np.random.choice(eids_e, size=len(eids_e))
-        ds = calculate_iteration.remote(in_path, prediction_paths, endpoint, scores, partition, model, t_eval, iteration, eids_i, output_path) #ray
+           
+        ds = calculate_iteration.remote(in_path, prediction_paths, endpoint, scores, partition, model, t_eval, iteration, eids_e, output_path) #ray
         rows_ray.append(ds)
 
         del eids_e
