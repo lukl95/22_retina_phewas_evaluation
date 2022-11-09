@@ -56,7 +56,7 @@ def load_data():
     figure_path = f"{project_path}/figures"
     output_path = f"{project_path}/data"
 
-    experiment = '220812_test'
+    experiment = '221108'
     experiment_path = f"{output_path}/{experiment}"
     pathlib.Path(experiment_path).mkdir(parents=True, exist_ok=True)
     
@@ -78,9 +78,9 @@ def load_data():
     
     scores = [
         'Age+Sex', 'Retina', 'Age+Sex+Retina',
-        "SCORE2", "SCORE2+Retina", 
-        "ASCVD", "ASCVD+Retina", 
-        "QRISK3", "QRISK3+Retina"
+#         "SCORE2", "SCORE2+Retina", 
+#         "ASCVD", "ASCVD+Retina", 
+#         "QRISK3", "QRISK3+Retina"
     ]
     
     today = str(date.today())
@@ -204,7 +204,7 @@ def main(args):
 
     # prepare setup
 #     today = str(date.today())
-    today = '221103'
+    today = '221109'
     t_eval = 10
     
     # benchmark all models and all partitions

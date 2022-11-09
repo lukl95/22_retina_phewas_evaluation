@@ -36,25 +36,36 @@ def get_score_defs():
 def get_features(endpoint, score_defs, models):
     features = {
         model: {
-#             "Age+Sex": score_defs["AgeSex"],
-#             "Retina": [endpoint],
-            "SCORE2": score_defs["SCORE2"],
-            "ASCVD": score_defs["ASCVD"],
-            "QRISK3": score_defs["QRISK3"],
-#             "Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
-           "SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
-           "ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
-           "QRISK3+Retina": score_defs["QRISK3"] + [endpoint],
+             "Age+Sex": score_defs["AgeSex"],
+             "Retina": [endpoint],
+#             "SCORE2": score_defs["SCORE2"],
+#             "ASCVD": score_defs["ASCVD"],
+#             "QRISK3": score_defs["QRISK3"],
+            "Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
+#            "SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
+#            "ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
+#            "QRISK3+Retina": score_defs["QRISK3"] + [endpoint],
             }
     for model in models}
     return features
 
 #def get_train_data(in_path, partition, models, data_outcomes, mapping):
 def get_train_data(in_path, partition, models, data_outcomes):
-    train_data = {
-        model: pd.read_feather(f"{in_path}/{model}/{partition}/train.feather")\
-        .set_index("eid").merge(data_outcomes, left_index=True, right_index=True, how="left")#.replace(mapping)
-        for model in models}
+    train_data = {}
+    
+    for model in models:
+        train = pd.read_feather(f"{in_path}/{model}/{partition}/train.feather")\
+                .set_index("eid").merge(data_outcomes, left_index=True, right_index=True, how="left")
+        valid = pd.read_feather(f"{in_path}/{model}/{partition}/valid.feather")\
+                .set_index("eid").merge(data_outcomes, left_index=True, right_index=True, how="left")
+        combined = pd.concat([train, valid], axis=0)
+        
+    train_data[model] = combined
+    
+#     train_data = {
+#         model: pd.read_feather(f"{in_path}/{model}/{partition}/train.feather")\
+#         .set_index("eid").merge(data_outcomes, left_index=True, right_index=True, how="left")#.replace(mapping)
+#         for model in models}
         
     return train_data
 
@@ -143,11 +154,11 @@ def load_data(partition):
     pathlib.Path(figure_path).mkdir(parents=True, exist_ok=True)
     pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
 
-    experiment = '220812_test'
+    experiment = '221108'
     experiment_path = f"{output_path}/{experiment}"
     pathlib.Path(experiment_path).mkdir(parents=True, exist_ok=True)
     
-    today = '220824'
+    today = '221109'
     # today = None
     
     #### ^^^^ ####
