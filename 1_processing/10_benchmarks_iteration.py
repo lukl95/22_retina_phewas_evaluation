@@ -163,7 +163,7 @@ def calculate_cindex(in_path, prediction_paths, endpoint, score, partition, mode
     # benchmark all partitions per model
     return {"endpoint":endpoint, "score": score, "model": model, "iteration": iteration, "time":time, "cindex":cindex}
 
-@ray.remote
+#@ray.remote
 def calculate_iteration(in_path, prediction_paths, endpoint, scores, partition, model, time, iteration, eids_e, output_path):  
 
     dicts = []
@@ -194,7 +194,7 @@ def main(args):
     os.environ['NUMEXPR_NUM_THREADS'] = "1"
     os.environ['OMP_NUM_THREADS'] = "1"
 
-    ray.init(address="auto")
+    #ray.init(address="auto")
 
     # read iteration and set seed
     iteration=args.iteration
@@ -220,14 +220,16 @@ def main(args):
     rows_ray = []
     for endpoint in endpoints: 
         eids_e = eids_dict[endpoint]
-           
-        ds = calculate_iteration.remote(in_path, prediction_paths, endpoint, scores, partition, model, t_eval, iteration, eids_e, output_path) #ray
+        
+        #ds = calculate_iteration.remote(in_path, prediction_paths, endpoint, scores, partition, model, t_eval, iteration, eids_e, output_path) #ray
+
+        ds = calculate_iteration(in_path, prediction_paths, endpoint, scores, partition, model, t_eval, iteration, eids_e, output_path) #ray
         rows_ray.append(ds)
 
         del eids_e
 
-    rows = [ray.get(r) for r in tqdm(rows_ray)] # ray
-    #rows = rows_ray # not ray
+    #rows = [ray.get(r) for r in tqdm(rows_ray)] # ray
+    rows = rows_ray # not ray
     rows_finished = [item for sublist in rows for item in sublist]
     benchmark_endpoints = pd.DataFrame({}).append(rows_finished, ignore_index=True)
     
@@ -237,7 +239,7 @@ def main(args):
     
     benchmark_endpoints.to_feather(f"{experiment_path}/benchmarks/{today}/{name}.feather")
     
-    ray.shutdown()
+    #ray.shutdown()
 
 if __name__ == "__main__":
     args = parse_args()
