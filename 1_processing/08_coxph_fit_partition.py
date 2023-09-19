@@ -36,14 +36,14 @@ def get_score_defs():
 def get_features(endpoint, score_defs, models):
     features = {
         model: {
-            #"Age+Sex": score_defs["AgeSex"],
-            #"Retina": [endpoint],
-            #"SCORE2": score_defs["SCORE2"],
-            #"ASCVD": score_defs["ASCVD"],
+            "Age+Sex": score_defs["AgeSex"],
+            "Retina": [endpoint],
+            "SCORE2": score_defs["SCORE2"],
+            "ASCVD": score_defs["ASCVD"],
             "QRISK3": score_defs["QRISK3"],
-            #"Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
-            #"SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
-            #"ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
+            "Age+Sex+Retina": score_defs["AgeSex"] + [endpoint],
+            "SCORE2+Retina": score_defs["SCORE2"] + [endpoint],
+            "ASCVD+Retina": score_defs["ASCVD"] + [endpoint],
             "QRISK3+Retina": score_defs["QRISK3"] + [endpoint],
             }
     for model in models}
@@ -172,11 +172,11 @@ def load_data(partition):
     pathlib.Path(figure_path).mkdir(parents=True, exist_ok=True)
     pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
 
-    experiment = '230426'
+    experiment = '230905'
     experiment_path = f"{output_path}/{experiment}"
     pathlib.Path(experiment_path).mkdir(parents=True, exist_ok=True)
     
-    today = '230426'
+    today = '230905'
     # today = None
     
     #### ^^^^ ####
@@ -184,10 +184,10 @@ def load_data(partition):
     in_path = pathlib.Path(f"{experiment_path}/coxph/input")
     in_path.mkdir(parents=True, exist_ok=True)
 
-    model_path = f"{experiment_path}/coxph/models"
+    model_path = f"{experiment_path}/coxph/models" #
     pathlib.Path(model_path).mkdir(parents=True, exist_ok=True)
 
-    data_outcomes = pd.read_feather(f"{output_path}/baseline_outcomes_220627.feather").set_index("eid")
+    data_outcomes = pd.read_feather(f"{output_path}/baseline_outcomes_230905.feather").set_index("eid")
     
     #endpoints_md = pd.read_csv(f"{experiment_path}/endpoints.csv")
     #endpoints = sorted(endpoints_md.endpoint.to_list())
@@ -272,7 +272,8 @@ def main(args):
 
     # setup ray and put files in plasma storage
     #ray.init(num_cpus=24) # crashes if num_cpus > 16, why not more possible?
-    ray.init(address="auto")
+#    ray.init(address="auto")
+    ray.init(num_cpus=16)
     ray_eids = ray.put(eids_dict)
     ray_score_defs = ray.put(score_defs)
     ray_endpoint_defs = ray.put(endpoint_defs)

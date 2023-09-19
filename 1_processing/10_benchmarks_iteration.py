@@ -56,10 +56,10 @@ def load_data():
     figure_path = f"{project_path}/figures"
     output_path = f"{project_path}/data"
     
-    today = '230426'
+    today = '230905'
     #today = str(date.today())
         
-    experiment = '230426'
+    experiment = '230905'
     experiment_path = f"{output_path}/{experiment}"
     pathlib.Path(experiment_path).mkdir(parents=True, exist_ok=True)
     
@@ -129,7 +129,7 @@ def prepare_data(in_path, prediction_paths, endpoint, score, partition, model, t
     # benchmark all partitions per model
     temp_preds = read_partitions_single_model(in_path, prediction_paths, endpoint, score, model, t_eval)
     
-    temp_tte = pd.read_feather(f"{output_path}/baseline_outcomes_220627.feather", 
+    temp_tte = pd.read_feather(f"{output_path}/baseline_outcomes_230905.feather", 
         columns= ["eid", f"{endpoint}_event", f"{endpoint}_time"]).set_index("eid")
     temp_tte.columns = ["event", "time"]
     temp_data = temp_preds.merge(temp_tte, left_index=True, right_index=True, how="left")
@@ -205,7 +205,7 @@ def main(args):
 
     # prepare setup
 #     today = str(date.today())
-    today = '230426'
+    today = '230905'
     t_eval = 10
     
     # benchmark all models and all partitions
